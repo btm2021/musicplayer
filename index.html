@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>vibe</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="view-music empty">
+<div id="stage">
+  <!-- media layer: YouTube / SoundCloud iframes, local file -->
+  <div id="media">
+    <div id="ytWrap" class="layer"><div id="ytPlayer"></div></div>
+    <div id="scWrap" class="layer"></div>
+    <video id="fileMedia" class="layer" playsinline></video>
+  </div>
+
+  <canvas id="viz"></canvas>
+  <div class="scrim"></div>
+
+  <div id="ui">
+    <!-- empty state -->
+    <div id="hero">
+      <div class="hero-orb"></div>
+      <h1>vibe</h1>
+      <p>Dán link YouTube / SoundCloud để bắt đầu</p>
+      <form id="heroForm"><input id="heroInput" autocomplete="off" spellcheck="false" placeholder="https://youtube.com/watch?v=…   ·   Ctrl+V ở bất cứ đâu"></form>
+      <small>hoặc kéo-thả link / file nhạc vào màn hình</small>
+    </div>
+
+    <!-- top-right tiny buttons -->
+    <div class="corner fadeable">
+      <button id="listBtn" class="ghost" title="Playlist (L)"></button>
+      <button id="fsBtn" class="ghost" title="Toàn màn hình (F)"></button>
+    </div>
+
+    <!-- big centered transport: never hides, just fades when idle -->
+    <div id="center">
+      <button id="cPrev" class="cbtn" title="Bài trước (P)"></button>
+      <button id="cPlay" class="cbtn big" title="Phát / Dừng (Space)"></button>
+      <button id="cNext" class="cbtn" title="Bài tiếp (N)"></button>
+    </div>
+
+    <!-- now playing -->
+    <div id="now">
+      <div id="nowSrc" class="now-src"></div>
+      <div id="nowTitle" class="now-title"></div>
+      <div id="nowArtist" class="now-artist"></div>
+    </div>
+
+    <!-- control dock -->
+    <div id="dock" class="glass fadeable">
+      <div class="seek-row">
+        <span id="cur">0:00</span>
+        <input id="seek" type="range" min="0" max="1000" value="0">
+        <span id="dur">0:00</span>
+      </div>
+      <div class="dock-row">
+        <div class="dock-side">
+          <div id="viewSeg" class="seg" title="V">
+            <button data-v="music">Music</button>
+            <button data-v="video">Video</button>
+          </div>
+        </div>
+        <div class="dock-center">
+          <button id="shuffleBtn" class="ib" title="Ngẫu nhiên (S)"></button>
+          <button id="prevBtn" class="ib" title="Bài trước (P)"></button>
+          <button id="playBtn" class="ib play" title="Phát / Dừng (Space)"></button>
+          <button id="nextBtn" class="ib" title="Bài tiếp (N)"></button>
+          <button id="repeatBtn" class="ib" title="Lặp (R)"></button>
+        </div>
+        <div class="dock-side right">
+          <button id="stopBtn" class="ib sm" title="Stop"></button>
+          <button id="muteBtn" class="ib sm" title="Tắt tiếng"></button>
+          <input id="vol" type="range" min="0" max="100" value="80">
+          <button id="sceneBtn" class="ib sm" title="Spectrum, nền &amp; màu"></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- visual panel: spectrum / background / colors -->
+    <div id="scenePanel" class="glass panel pop">
+      <div id="panelTabs" class="tabs">
+        <button data-tab="spec">Spectrum</button><button data-tab="scene">Nền</button><button data-tab="fx">Màu &amp; hiệu ứng</button>
+      </div>
+
+      <section data-pane="spec">
+        <div id="specGrid" class="scene-grid spec-grid"></div>
+        <label class="p-row"><span>Kích thước</span><input id="specSize" type="range" min="0.5" max="1.6" step="0.05" value="1"></label>
+        <div class="p-row">
+          <span>Tự đổi spectrum</span>
+          <div id="specAutoSeg" class="seg">
+            <button data-a="off">Tắt</button><button data-a="seq">Tuần tự</button><button data-a="rand">Ngẫu nhiên</button>
+          </div>
+        </div>
+        <div class="p-row">
+          <span>Đổi sau</span>
+          <select id="specEvery">
+            <option value="20">20 giây</option>
+            <option value="45">45 giây</option>
+            <option value="60">1 phút</option>
+            <option value="120">2 phút</option>
+            <option value="300">5 phút</option>
+            <option value="0">Mỗi bài mới</option>
+          </select>
+        </div>
+        <div class="p-hint muted">Phím K / Shift+K để đổi nhanh</div>
+      </section>
+
+      <section data-pane="scene">
+        <div class="p-hint muted" style="margin-top:0">Chấm ● = có trong vòng tự đổi · Phím M / Shift+M / X</div>
+        <div id="sceneGrid" class="scene-grid"></div>
+        <label class="p-row"><span>Độ sáng nền</span><input id="bgBright" type="range" min="0.25" max="1" step="0.05" value="0.85"></label>
+        <div class="p-row">
+          <span>Tự đổi nền</span>
+          <div id="autoSeg" class="seg">
+            <button data-a="off">Tắt</button><button data-a="seq">Tuần tự</button><button data-a="rand">Ngẫu nhiên</button>
+          </div>
+        </div>
+        <div class="p-row">
+          <span>Đổi sau</span>
+          <select id="autoEvery">
+            <option value="20">20 giây</option>
+            <option value="45">45 giây</option>
+            <option value="60">1 phút</option>
+            <option value="120">2 phút</option>
+            <option value="300">5 phút</option>
+            <option value="0">Mỗi bài mới</option>
+          </select>
+        </div>
+      </section>
+
+      <section data-pane="fx">
+        <div class="p-title">Bảng màu</div>
+        <div id="themeChips" class="chips"></div>
+        <div class="p-row">
+          <span>Tự đổi màu</span>
+          <div id="themeAutoSeg" class="seg">
+            <button data-a="off">Tắt</button><button data-a="seq">Tuần tự</button><button data-a="rand">Ngẫu nhiên</button>
+          </div>
+        </div>
+        <div class="p-row">
+          <span>Đổi sau</span>
+          <select id="themeEvery">
+            <option value="10">10 giây</option>
+            <option value="20">20 giây</option>
+            <option value="30">30 giây</option>
+            <option value="60">1 phút</option>
+            <option value="120">2 phút</option>
+            <option value="0">Mỗi bài mới</option>
+          </select>
+        </div>
+        <div class="p-row">
+          <button id="themeRandBtn" class="chip">🎲 Màu ngẫu nhiên <small class="muted">C</small></button>
+          <button id="randAllBtn" class="chip solid">🎲 Random tất cả <small>Z</small></button>
+        </div>
+        <div class="p-title">Hiệu ứng</div>
+        <label class="p-row"><span>Độ nhạy</span><input id="sens" type="range" min="0.4" max="2.5" step="0.05" value="1"></label>
+        <label class="p-row"><span>Bloom (phát sáng)</span><input id="fxBloom" type="checkbox" class="switch"></label>
+        <label class="p-row"><span>Film grain</span><input id="fxGrain" type="checkbox" class="switch"></label>
+        <div class="p-row">
+          <span>Strobe (chớp sáng)</span>
+          <div id="strobeSeg" class="seg">
+            <button data-s="off">Tắt</button><button data-s="soft">Nhẹ</button><button data-s="hard">Mạnh</button>
+          </div>
+        </div>
+        <div class="p-title">Nguồn sóng nhạc</div>
+        <div class="p-row"><span id="srcLabel" class="muted">Mô phỏng theo nhịp</span><button id="micBtn" class="chip">🎙 Micro</button></div>
+      </section>
+    </div>
+
+    <!-- playlist drawer -->
+    <aside id="drawer" class="glass panel">
+      <div class="d-head">
+        <b>Playlist</b><small id="count"></small>
+        <button id="closeDrawer" class="ghost sm" title="Đóng">✕</button>
+      </div>
+      <form id="addForm">
+        <textarea id="linkInput" rows="2" spellcheck="false" placeholder="Dán link YouTube / SoundCloud (mỗi dòng 1 link)…"></textarea>
+        <div class="add-row">
+          <button type="submit" class="chip solid">+ Thêm</button>
+          <label class="chip">♫ File nhạc<input id="fileInput" type="file" multiple accept="audio/*,video/*" hidden></label>
+          <button type="button" id="clearBtn" class="link">Xoá hết</button>
+        </div>
+      </form>
+      <div class="cloud">
+        <div class="cloud-row">
+          <span id="cloudStatus" class="cloud-status">☁</span>
+          <button id="cloudPull" class="chip sm" title="Tải playlist từ cloud">⬇ Tải</button>
+          <button id="cloudPush" class="chip sm" title="Lưu playlist lên cloud">⬆ Lưu</button>
+          <button id="cloudCfgBtn" class="ghost sm" title="Cài đặt cloud">⚙</button>
+        </div>
+        <div id="cloudCfg" class="cloud-cfg" hidden>
+          <label class="cloud-label">npoint.io bin (ID hoặc link)</label>
+          <div class="cloud-row">
+            <input id="cloudBin" spellcheck="false" autocomplete="off" placeholder="vd: 0a2a1ee5218ce7717361">
+            <button id="cloudOpen" class="ghost sm" title="Mở bin trên npoint.io">↗</button>
+          </div>
+          <label class="p-row"><span>Tự đồng bộ</span><input id="cloudAuto" type="checkbox" class="switch"></label>
+        </div>
+      </div>
+      <ul id="playlist"></ul>
+    </aside>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script src="visualizer.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
