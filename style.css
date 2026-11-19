@@ -269,6 +269,8 @@ input[type=range]::-moz-range-thumb { width: 12px; height: 12px; border: 0; bord
 .cloud-status[data-s="err"] { color: #ff7a90; }
 .chip.sm { padding: 4px 10px; font-size: 11px; }
 .cloud-cfg { margin-top: 8px; }
+.cloud-hint { margin-top: 8px; padding: 8px 10px; border-radius: 10px; background: rgba(255,122,144,.1); border: 1px solid rgba(255,122,144,.25); color: var(--text); font-size: 11px; line-height: 1.6; }
+.cloud-hint.muted-hint { background: rgba(255,255,255,.04); border-color: var(--line); color: var(--muted); }
 .cloud-label { display: block; color: var(--muted); font-size: 11px; margin-bottom: 4px; }
 #cloudBin {
   flex: 1; min-width: 0; padding: 7px 12px; border-radius: 99px; outline: none; font-size: 12px;

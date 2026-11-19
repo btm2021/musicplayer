@@ -36,8 +36,8 @@ const state = Object.assign({
 if (state.auto === true && state.autoMode === 'off') state.autoMode = 'seq';   // migrate old setting
 delete state.auto;
 
-const CLOUD_KEY = 'vibe:cloud';
-const cloud = Object.assign({ bin: '0a2a1ee5218ce7717361', auto: true },
+const CLOUD_KEY = 'vibe:cloud2';      // textdb.dev (v1 was npoint, which blocked API writes)
+const cloud = Object.assign({ bin: 'bfde3773-8758-4d66-9d37-a4a655a20711', auto: true },
   (() => { try { return JSON.parse(localStorage.getItem(CLOUD_KEY) || '{}'); } catch { return {}; } })());
 const saveCloudCfg = () => { try { localStorage.setItem(CLOUD_KEY, JSON.stringify(cloud)); } catch {} };
 let pushTimer = null;
@@ -865,27 +865,41 @@ applyView(); applyModes(); applyVolume(); setPlaying(false);
 renderList(); updateNow(); updateSource();
 state.list.filter((t) => !t.title).forEach(fetchMeta);
 
-/* ---------------- cloud sync (npoint.io) ---------------- */
+/* ---------------- cloud sync (textdb.dev — no account, the UUID key is the password) ---------------- */
 function cloudStatus(text, kind = '') { const el = $('#cloudStatus'); el.textContent = text; el.dataset.s = kind; }
 const hhmm = (d) => new Date(d).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-const binUrl = () => `https://api.npoint.io/${cloud.bin}`;
-function parseBin(s) { const m = String(s || '').trim().match(/([a-z0-9]{12,})\/?(?:[?#].*)?$/i); return m ? m[1] : ''; }
+const binUrl = () => `https://textdb.dev/api/data/${encodeURIComponent(cloud.bin)}`;
+function parseBin(s) { const m = String(s || '').trim().match(/([a-z0-9-]{8,})\/?(?:[?#].*)?$/i); return m ? m[1] : ''; }
+const newKey = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); }));
 
 async function cloudPush(manual) {
   clearTimeout(pushTimer);
-  if (!cloud.bin) { if (manual) toast('Chưa nhập npoint bin'); return; }
+  if (!cloud.bin) { if (manual) toast('Chưa có mã đồng bộ'); return; }
   cloudStatus('☁ Đang lưu…', 'busy');
   try {
     const list = cloudItems();
-    const body = { app: 'vibe-player', version: 1, updatedAt: state.listUpdatedAt || Date.now(), count: list.length, list };
-    const r = await fetch(binUrl(), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    if (!r.ok) throw new Error(r.status === 401 || r.status === 403 ? 'bin đang bị khoá (Lock) trên npoint' : 'HTTP ' + r.status);
+    // exactly "text/plain": textdb returns 500 (without CORS headers → "Failed to fetch") if a ;charset is appended
+    const r = await fetch(binUrl(), { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(cloudBody()) });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
     cloudStatus(`☁ Đã lưu ${hhmm(Date.now())} · ${list.length} bài`, 'ok');
     if (manual) toast(`Đã lưu ${list.length} bài lên cloud ☁`);
   } catch (e) {
     cloudStatus('☁ Lỗi lưu: ' + e.message, 'err');
     if (manual) toast('Không lưu được: ' + e.message, 4000);
   }
+}
+function cloudBody() {
+  const list = cloudItems();
+  return { app: 'vibe-player', version: 1, updatedAt: state.listUpdatedAt || Date.now(), count: list.length, list };
+}
+async function copyCloudJson() {
+  const text = JSON.stringify(cloudBody(), null, 2);
+  try { await navigator.clipboard.writeText(text); }
+  catch {
+    const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy'); ta.remove();
+  }
+  toast('Đã copy JSON playlist (bản sao lưu)', 2500);
 }
 function schedulePush() {
   if (!cloud.auto || !cloud.bin) return;
@@ -895,12 +909,13 @@ function schedulePush() {
 }
 
 async function cloudPull(manual) {
-  if (!cloud.bin) { if (manual) toast('Chưa nhập npoint bin'); cloudStatus('☁ Chưa có bin'); return; }
+  if (!cloud.bin) { if (manual) toast('Chưa có mã đồng bộ'); cloudStatus('☁ Chưa có mã'); return; }
   cloudStatus('☁ Đang tải…', 'busy');
   try {
     const r = await fetch(binUrl() + '?_=' + Date.now(), { cache: 'no-store' });
     if (!r.ok) throw new Error('HTTP ' + r.status);
-    const data = await r.json();
+    let data = null;
+    try { const txt = await r.text(); data = txt.trim() ? JSON.parse(txt) : null; } catch { data = null; }
     if (!data || data.app !== 'vibe-player' || !Array.isArray(data.list)) {
       cloudStatus('☁ Cloud trống — sẽ lưu khi playlist thay đổi', 'ok');
       if (manual) toast('Cloud chưa có playlist nào');
@@ -949,15 +964,24 @@ $('#cloudBin').onchange = (e) => {
   e.target.value = id;
   if (id === cloud.bin) return;
   cloud.bin = id; saveCloudCfg();
-  if (id) cloudPull(false); else cloudStatus('☁ Chưa có bin');
+  if (id) cloudPull(false); else cloudStatus('☁ Chưa có mã');
 };
 $('#cloudAuto').onchange = (e) => {
   cloud.auto = e.target.checked; saveCloudCfg();
   if (cloud.auto) cloudPull(false); else { clearTimeout(pushTimer); cloudStatus('☁ Đồng bộ thủ công'); }
 };
-$('#cloudOpen').onclick = () => cloud.bin && window.open(`https://www.npoint.io/docs/${cloud.bin}`, '_blank');
+$('#cloudCopy').onclick = copyCloudJson;
+$('#cloudOpen').onclick = () => cloud.bin && window.open(binUrl(), '_blank');
+$('#cloudNew').onclick = () => {
+  if (!confirm('Tạo mã đồng bộ mới? Playlist hiện tại sẽ được lưu vào mã mới (mã cũ vẫn còn dữ liệu cũ).')) return;
+  cloud.bin = newKey(); saveCloudCfg(); $('#cloudBin').value = cloud.bin;
+  cloudPush(true);
+};
+$('#cloudKeyCopy').onclick = async () => {
+  try { await navigator.clipboard.writeText(cloud.bin); toast('Đã copy mã — dán vào ⚙ ở máy khác để dùng chung playlist', 3500); } catch { toast(cloud.bin, 6000); }
+};
 
 lastListJson = JSON.stringify(cloudItems());
 if (cloud.auto && cloud.bin) cloudPull(false);
-else cloudStatus(cloud.bin ? '☁ Đồng bộ thủ công' : '☁ Chưa có bin');
+else cloudStatus(cloud.bin ? '☁ Đồng bộ thủ công' : '☁ Chưa có mã');
 })();

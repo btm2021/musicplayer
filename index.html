@@ -191,12 +191,18 @@
           <button id="cloudCfgBtn" class="ghost sm" title="Cài đặt cloud">⚙</button>
         </div>
         <div id="cloudCfg" class="cloud-cfg" hidden>
-          <label class="cloud-label">npoint.io bin (ID hoặc link)</label>
+          <label class="cloud-label">Mã đồng bộ (textdb.dev) — dùng cùng mã ở máy khác để chung playlist</label>
           <div class="cloud-row">
-            <input id="cloudBin" spellcheck="false" autocomplete="off" placeholder="vd: 0a2a1ee5218ce7717361">
-            <button id="cloudOpen" class="ghost sm" title="Mở bin trên npoint.io">↗</button>
+            <input id="cloudBin" spellcheck="false" autocomplete="off" placeholder="UUID, vd: bfde3773-8758-…">
+            <button id="cloudKeyCopy" class="ghost sm" title="Copy mã">⧉</button>
+            <button id="cloudOpen" class="ghost sm" title="Xem dữ liệu thô">↗</button>
           </div>
           <label class="p-row"><span>Tự đồng bộ</span><input id="cloudAuto" type="checkbox" class="switch"></label>
+          <div class="cloud-row" style="margin-top:8px">
+            <button id="cloudNew" class="chip sm" title="Tạo mã ngẫu nhiên mới">🔑 Mã mới</button>
+            <button id="cloudCopy" class="chip sm" title="Copy JSON playlist để sao lưu">📋 Copy JSON</button>
+          </div>
+          <div class="cloud-hint muted-hint">Ai có mã này đều đọc/ghi được playlist — đừng chia sẻ công khai.</div>
         </div>
       </div>
       <ul id="playlist"></ul>
